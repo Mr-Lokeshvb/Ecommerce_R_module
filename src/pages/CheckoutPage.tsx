@@ -4,6 +4,7 @@ import { CreditCard, MapPin, Truck, Lock } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { useCurrencyStore } from '../store/currencyStore';
+import { API_BASE_URL } from '../utils/api';
 import toast from 'react-hot-toast';
 
 const CheckoutPage = () => {
@@ -108,7 +109,7 @@ const CheckoutPage = () => {
 
       // Create order via API
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/orders/create', {
+      const response = await fetch(`${API_BASE_URL}/api/orders/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

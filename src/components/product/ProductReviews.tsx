@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, ThumbsUp, User } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { API_BASE_URL } from '../../utils/api';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
@@ -47,7 +48,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId }) => {
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:5000/api/reviews/product/${productId}`);
+      const response = await axios.get(`${API_BASE_URL}/api/reviews/product/${productId}`);
       if (response.data.success) {
         setReviews(response.data.data.reviews);
       }
@@ -64,7 +65,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId }) => {
       const token = localStorage.getItem('token');
       
       // Fetch user's delivered orders
-      const response = await axios.get('http://localhost:5000/api/orders', {
+      const response = await axios.get(`${API_BASE_URL}/api/orders`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -117,7 +118,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId }) => {
       setSubmitting(true);
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        'http://localhost:5000/api/reviews',
+        `${API_BASE_URL}/api/reviews`,
         {
           productId,
           orderId: selectedOrderId,
@@ -157,7 +158,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `http://localhost:5000/api/reviews/${reviewId}/helpful`,
+        `${API_BASE_URL}/api/reviews/${reviewId}/helpful`,
         {},
         {
           headers: {

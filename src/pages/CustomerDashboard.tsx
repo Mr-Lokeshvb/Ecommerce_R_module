@@ -8,6 +8,7 @@ import { ChatDashboard } from '../components/chat/ChatDashboard';
 import { FloatingChatButton } from '../components/chat/FloatingChatButton';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { API_BASE_URL } from '../utils/api';
 
 const CustomerDashboard = () => {
   const { user } = useAuthStore();
@@ -34,7 +35,7 @@ const CustomerDashboard = () => {
   const fetchRealOrders = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/orders', {
+      const response = await axios.get(`${API_BASE_URL}/api/orders`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -484,7 +485,7 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
       }
       
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/orders', {
+      const response = await axios.get(`${API_BASE_URL}/api/orders`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -568,7 +569,7 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
       console.log('📦 Selected product:', selectedProduct);
       
       const response = await axios.post(
-        'http://localhost:5000/api/reviews',
+        `${API_BASE_URL}/api/reviews`,
         reviewData,
         { headers: { Authorization: `Bearer ${token}` } }
       );

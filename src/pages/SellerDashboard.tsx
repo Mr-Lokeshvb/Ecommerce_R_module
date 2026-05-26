@@ -15,6 +15,7 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 import { useOrderStore } from '../store/orderStore';
+import { API_BASE_URL } from '../utils/api';
 
 const zeroStats = {
   totalProducts: 0,
@@ -179,7 +180,7 @@ const OrdersTab: React.FC<{ orders: any[]; fetchSellerOrders: () => void }> = ({
       }
 
       await axios.put(
-        `http://localhost:5000/api/seller/orders/${orderId}/status`,
+        `${API_BASE_URL}/api/seller/orders/${orderId}/status`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
