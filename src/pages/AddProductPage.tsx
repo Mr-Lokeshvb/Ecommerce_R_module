@@ -189,9 +189,9 @@ const AddProductPage = () => {
       await addProduct(productData);
       toast.success('Product added successfully!');
       navigate('/seller-dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Product creation error:', error);
-      toast.error('Failed to add product. Please check all required fields.');
+      toast.error(error?.message || 'Failed to add product. Please check all required fields.');
     } finally {
       setLoading(false);
     }

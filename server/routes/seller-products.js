@@ -43,7 +43,26 @@ router.post('/', [auth, authorize('SELLER')], async (req, res) => {
         res.status(201).json({ success: true, message: 'Product created successfully', data: product });
     } catch (error) {
         console.error('❌ Create product error:', error);
-        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({
+                success: false,
+                message: Object.values(error.errors).map(err => err.message).join(', '),
+                errors: Object.values(error.errors).map(err => ({
+                    field: err.path,
+                    message: err.message
+                }))
+            });
+        }
+
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                message: 'A product with this generated slug or SKU already exists. Please change the title or variant details.',
+                error: error.message
+            });
+        }
+
+        res.status(500).json({ success: false, message: error.message || 'Server error', error: error.message });
     }
 });
 

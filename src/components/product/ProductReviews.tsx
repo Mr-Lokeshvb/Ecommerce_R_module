@@ -35,15 +35,22 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId }) => {
   const [eligibleOrders, setEligibleOrders] = useState<any[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState('');
   const [checkingEligibility, setCheckingEligibility] = useState(false);
+  const [hasAlreadyReviewed, setHasAlreadyReviewed] = useState(false);
   const { user, isAuthenticated } = useAuthStore();
+  const canWriteReviews = isAuthenticated && user?.role === 'CUSTOMER';
 
   // Fetch reviews
   useEffect(() => {
     fetchReviews();
-    if (isAuthenticated) {
+    if (canWriteReviews) {
       checkReviewEligibility();
+    } else {
+      setEligibleOrders([]);
+      setSelectedOrderId('');
+      setShowReviewForm(false);
+      setHasAlreadyReviewed(false);
     }
-  }, [productId, isAuthenticated]);
+  }, [productId, canWriteReviews]);
 
   const fetchReviews = async () => {
     try {
@@ -63,6 +70,26 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId }) => {
     try {
       setCheckingEligibility(true);
       const token = localStorage.getItem('token');
+
+      const reviewedResponse = await axios.get(`${API_BASE_URL}/api/reviews/mine`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const reviewedProductIds = reviewedResponse.data.success
+        ? reviewedResponse.data.data.productIds || []
+        : [];
+
+      if (reviewedProductIds.includes(productId)) {
+        setHasAlreadyReviewed(true);
+        setEligibleOrders([]);
+        setSelectedOrderId('');
+        setShowReviewForm(false);
+        return;
+      }
+
+      setHasAlreadyReviewed(false);
       
       // Fetch user's delivered orders
       const response = await axios.get(`${API_BASE_URL}/api/orders`, {
@@ -80,7 +107,10 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId }) => {
         // Filter orders that contain this product and are delivered
         const eligible = ordersArray.filter((order: any) => 
           order.status === 'delivered' && 
-          order.items.some((item: any) => item.productId === productId || item.productId._id === productId)
+          order.items.some((item: any) => {
+            const itemProductId = item.productId?._id || item.productId;
+            return itemProductId?.toString() === productId;
+          })
         );
         
         console.log('✅ Eligible orders for review:', eligible.length);
@@ -99,8 +129,8 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId }) => {
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!isAuthenticated) {
-      toast.error('Please login to submit a review');
+    if (!canWriteReviews) {
+      toast.error('Only customers can submit reviews');
       return;
     }
 
@@ -136,6 +166,9 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId }) => {
       if (response.data.success) {
         toast.success('Review submitted successfully!');
         setShowReviewForm(false);
+        setHasAlreadyReviewed(true);
+        setEligibleOrders([]);
+        setSelectedOrderId('');
         setTitle('');
         setComment('');
         setRating(5);
@@ -215,7 +248,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId }) => {
         <h2 className="text-2xl font-bold text-gray-900">
           Customer Reviews ({reviews.length})
         </h2>
-        {isAuthenticated && eligibleOrders.length > 0 && (
+        {canWriteReviews && !hasAlreadyReviewed && eligibleOrders.length > 0 && (
           <button
             onClick={() => setShowReviewForm(!showReviewForm)}
             className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
@@ -223,7 +256,12 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId }) => {
             {showReviewForm ? 'Cancel' : 'Write a Review'}
           </button>
         )}
-        {isAuthenticated && eligibleOrders.length === 0 && !checkingEligibility && (
+        {canWriteReviews && hasAlreadyReviewed && !checkingEligibility && (
+          <div className="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-lg">
+            <p>You already reviewed this product</p>
+          </div>
+        )}
+        {canWriteReviews && !hasAlreadyReviewed && eligibleOrders.length === 0 && !checkingEligibility && (
           <div className="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-lg">
             <p>📦 Purchase this product to leave a review</p>
           </div>

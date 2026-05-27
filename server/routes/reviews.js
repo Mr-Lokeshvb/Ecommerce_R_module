@@ -3,9 +3,37 @@ const { body, validationResult } = require('express-validator');
 const Review = require('../models/Review');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
-const { auth } = require('../middleware/auth');
+const { auth, authorize } = require('../middleware/auth');
 
 const router = express.Router();
+
+// @route   GET /api/reviews/mine
+// @desc    Get product IDs already reviewed by the logged-in customer
+// @access  Private
+router.get('/mine', [auth, authorize('CUSTOMER')], async (req, res) => {
+  try {
+    const reviews = await Review.find({ userId: req.user.id })
+      .select('productId orderId')
+      .lean();
+
+    res.json({
+      success: true,
+      data: {
+        productIds: reviews.map((review) => review.productId.toString()),
+        reviews: reviews.map((review) => ({
+          productId: review.productId.toString(),
+          orderId: review.orderId.toString()
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Get my reviewed products error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error fetching reviewed products'
+    });
+  }
+});
 
 // @route   GET /api/reviews/product/:productId
 // @desc    Get reviews for a product
@@ -76,6 +104,7 @@ router.get('/product/:productId', async (req, res) => {
 // @access  Private
 router.post('/', [
   auth,
+  authorize('CUSTOMER'),
   body('productId').isMongoId().withMessage('Invalid product ID'),
   body('orderId').isMongoId().withMessage('Invalid order ID'),
   body('rating').isInt({ min: 1, max: 5 }).withMessage('Rating must be between 1 and 5'),

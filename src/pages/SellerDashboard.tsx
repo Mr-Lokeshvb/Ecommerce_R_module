@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   BarChart3,
   CheckCircle,
   Clock,
   DollarSign,
+  Edit3,
   Package,
   PackageCheck,
   ShoppingCart,
   Target,
+  Trash2,
   Truck,
   XCircle
 } from 'lucide-react';
@@ -15,6 +18,7 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 import { useOrderStore } from '../store/orderStore';
+import { useProductStore } from '../store/productStore';
 import { API_BASE_URL } from '../utils/api';
 
 const zeroStats = {
@@ -28,14 +32,17 @@ const zeroStats = {
 const SellerDashboard = () => {
   const { user } = useAuthStore();
   const { orders, fetchSellerOrders } = useOrderStore();
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders'>('orders');
+  const { products, fetchSellerProducts, updateProduct, deleteProduct } = useProductStore();
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders'>('orders');
 
   useEffect(() => {
     fetchSellerOrders();
-  }, [fetchSellerOrders]);
+    fetchSellerProducts();
+  }, [fetchSellerOrders, fetchSellerProducts]);
 
   const tabs = [
     { id: 'overview' as const, label: 'Overview', icon: BarChart3 },
+    { id: 'products' as const, label: 'Products', icon: Package },
     { id: 'orders' as const, label: 'Orders', icon: ShoppingCart }
   ];
 
@@ -48,14 +55,22 @@ const SellerDashboard = () => {
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
                 Seller Dashboard, {user?.name}
               </h1>
-              <p className="text-gray-600">Order processing is enabled. Other seller dashboard modules are disabled.</p>
+              <p className="text-gray-600">Create products and process customer orders from here.</p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:flex lg:items-center lg:space-x-6">
-              <ZeroStat label="Products" value={zeroStats.totalProducts} tone="text-green-600" />
-              <ZeroStat label="Orders" value={zeroStats.totalOrders} tone="text-blue-600" />
-              <ZeroStat label="Revenue" value={`$${zeroStats.totalRevenue.toFixed(2)}`} tone="text-yellow-600" />
-              <ZeroStat label="Profit" value={`$${zeroStats.totalProfit.toFixed(2)}`} tone="text-purple-600" />
+            <div className="flex flex-col lg:items-end gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:flex lg:items-center lg:space-x-6">
+                <ZeroStat label="Products" value={zeroStats.totalProducts} tone="text-green-600" />
+                <ZeroStat label="Orders" value={zeroStats.totalOrders} tone="text-blue-600" />
+                <ZeroStat label="Revenue" value={`$${zeroStats.totalRevenue.toFixed(2)}`} tone="text-yellow-600" />
+                <ZeroStat label="Profit" value={`$${zeroStats.totalProfit.toFixed(2)}`} tone="text-purple-600" />
+              </div>
+              <Link
+                to="/seller/products/new"
+                className="inline-flex items-center justify-center px-5 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors font-medium"
+              >
+                Add Product
+              </Link>
             </div>
           </div>
         </div>
@@ -85,7 +100,7 @@ const SellerDashboard = () => {
         {activeTab === 'overview' && (
           <div className="space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6">
-              <MetricCard label="Total Products" value={zeroStats.totalProducts} note="Disabled" icon={<Package className="h-8 w-8 text-green-200" />} color="from-green-500 to-green-600" />
+              <MetricCard label="Total Products" value={zeroStats.totalProducts} note="Add products from the button above" icon={<Package className="h-8 w-8 text-green-200" />} color="from-green-500 to-green-600" />
               <MetricCard label="Total Orders" value={zeroStats.totalOrders} note="View orders tab" icon={<ShoppingCart className="h-8 w-8 text-blue-200" />} color="from-blue-500 to-blue-600" />
               <MetricCard label="Total Revenue" value={`$${zeroStats.totalRevenue.toFixed(2)}`} note="Disabled" icon={<DollarSign className="h-8 w-8 text-yellow-200" />} color="from-yellow-500 to-yellow-600" />
               <MetricCard label="Total Profit" value={`$${zeroStats.totalProfit.toFixed(2)}`} note="Disabled" icon={<Target className="h-8 w-8 text-purple-200" />} color="from-purple-500 to-purple-600" />
@@ -94,16 +109,39 @@ const SellerDashboard = () => {
 
             <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
               <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Seller modules disabled</h2>
-              <p className="text-gray-600 mb-6">Products, analytics, messages, performance, and extra store information are wired out.</p>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Seller tools</h2>
+              <p className="text-gray-600 mb-6">Product creation and order processing are enabled. Analytics and extra store information remain wired out.</p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link
+                  to="/seller/products/new"
+                  className="inline-flex items-center justify-center px-5 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+                >
+                Add Product
+              </Link>
+              <button
+                onClick={() => setActiveTab('products')}
+                className="inline-flex items-center justify-center px-5 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Manage Products
+              </button>
               <button
                 onClick={() => setActiveTab('orders')}
-                className="inline-flex items-center justify-center px-5 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
-              >
-                Manage Orders
-              </button>
+                className="inline-flex items-center justify-center px-5 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Manage Orders
+                </button>
+              </div>
             </div>
           </div>
+        )}
+
+        {activeTab === 'products' && (
+          <ProductsTab
+            products={Array.isArray(products) ? products : []}
+            updateProduct={updateProduct}
+            deleteProduct={deleteProduct}
+            fetchSellerProducts={fetchSellerProducts}
+          />
         )}
 
         {activeTab === 'orders' && (
@@ -145,6 +183,300 @@ const MetricCard = ({
     </div>
   </div>
 );
+
+const ProductsTab: React.FC<{
+  products: any[];
+  updateProduct: (productId: string, productData: any) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
+  fetchSellerProducts: () => Promise<void>;
+}> = ({ products, updateProduct, deleteProduct, fetchSellerProducts }) => {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    brand: '',
+    category: 'clothing',
+    subcategory: '',
+    material: '',
+    description: '',
+    basePrice: '',
+    stock: '',
+    isActive: true
+  });
+
+  const getPrimaryImage = (product: any) => {
+    const images = Array.isArray(product.images) ? product.images : [];
+    const primary = images.find((image: any) => image?.isPrimary) || images[0];
+    return typeof primary === 'string' ? primary : primary?.url;
+  };
+
+  const handleDelete = async (product: any) => {
+    const productId = product._id || product.id;
+    if (!productId) {
+      toast.error('Product id missing');
+      return;
+    }
+
+    const confirmed = window.confirm(`Remove "${product.title || product.name || 'this product'}"?`);
+    if (!confirmed) return;
+
+    try {
+      setDeletingId(productId);
+      await deleteProduct(productId);
+      toast.success('Product removed successfully');
+      fetchSellerProducts();
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to remove product');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const openEdit = (product: any) => {
+    const totalStock = Array.isArray(product.variants)
+      ? product.variants.reduce((sum: number, variant: any) => sum + Number(variant.stock || 0), 0)
+      : 0;
+
+    setEditingProduct(product);
+    setEditForm({
+      title: product.title || '',
+      brand: product.brand || '',
+      category: product.category || 'clothing',
+      subcategory: product.subcategory || '',
+      material: product.material || '',
+      description: product.description || '',
+      basePrice: String(product.basePrice || product.price || ''),
+      stock: String(totalStock),
+      isActive: product.isActive !== false
+    });
+  };
+
+  const closeEdit = () => {
+    setEditingProduct(null);
+    setSavingEdit(false);
+  };
+
+  const handleEditChange = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = event.target;
+    setEditForm((current) => ({
+      ...current,
+      [name]: name === 'isActive' ? value === 'true' : value
+    }));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingProduct) return;
+
+    const productId = editingProduct._id || editingProduct.id;
+    if (!productId) {
+      toast.error('Product id missing');
+      return;
+    }
+
+    if (!editForm.title.trim() || !editForm.description.trim() || !editForm.subcategory.trim() || !editForm.material.trim()) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    const basePrice = Number(editForm.basePrice);
+    if (!basePrice || basePrice <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+
+    const stock = Math.max(0, Number(editForm.stock) || 0);
+    const currentVariants = Array.isArray(editingProduct.variants) && editingProduct.variants.length > 0
+      ? editingProduct.variants
+      : [{ size: 'OS', color: 'Black', stock, price: basePrice }];
+
+    const updatedVariants = currentVariants.map((variant: any, index: number) => ({
+      ...variant,
+      stock: index === 0 ? stock : 0,
+      price: basePrice
+    }));
+
+    try {
+      setSavingEdit(true);
+      await updateProduct(productId, {
+        title: editForm.title.trim(),
+        brand: editForm.brand.trim(),
+        category: editForm.category,
+        subcategory: editForm.subcategory.trim(),
+        material: editForm.material.trim(),
+        description: editForm.description.trim(),
+        basePrice,
+        variants: updatedVariants,
+        isActive: editForm.isActive
+      });
+      toast.success('Product updated successfully');
+      closeEdit();
+      fetchSellerProducts();
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to update product');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h3 className="text-2xl font-semibold text-gray-900">Manage Products</h3>
+        <Link
+          to="/seller/products/new"
+          className="inline-flex items-center justify-center px-5 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors font-medium"
+        >
+          Add Product
+        </Link>
+      </div>
+
+      {products.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
+          <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-500 mb-4">No products added yet</p>
+          <Link
+            to="/seller/products/new"
+            className="inline-flex items-center justify-center px-5 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+          >
+            Add Product
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {products.map((product) => {
+            const productId = product._id || product.id;
+            const imageUrl = getPrimaryImage(product);
+            const totalStock = Array.isArray(product.variants)
+              ? product.variants.reduce((sum: number, variant: any) => sum + Number(variant.stock || 0), 0)
+              : 0;
+
+            return (
+              <div key={productId} className="bg-white rounded-2xl shadow-sm p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="h-20 w-20 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                    {imageUrl ? (
+                      <img src={imageUrl} alt={product.title || product.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center">
+                        <Package className="h-8 w-8 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-gray-900 truncate">{product.title || product.name}</h4>
+                    <div className="mt-1 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                      <div>
+                        <p className="text-gray-500">Category</p>
+                        <p className="font-medium text-gray-900 capitalize">{product.category || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Price</p>
+                        <p className="font-medium text-gray-900">${Number(product.basePrice || product.price || 0).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Stock</p>
+                        <p className="font-medium text-gray-900">{totalStock}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Status</p>
+                        <p className="font-medium text-gray-900">{product.isActive === false ? 'Inactive' : 'Active'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      onClick={() => openEdit(product)}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(product)}
+                      disabled={deletingId === productId}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {deletingId === productId ? 'Removing...' : 'Remove'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {editingProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-semibold text-gray-900 mb-5">Edit Product</h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Title *</span>
+                <input name="title" value={editForm.title} onChange={handleEditChange} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2" />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Brand</span>
+                <input name="brand" value={editForm.brand} onChange={handleEditChange} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2" />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Category *</span>
+                <select name="category" value={editForm.category} onChange={handleEditChange} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2">
+                  <option value="clothing">Clothing</option>
+                  <option value="accessories">Accessories</option>
+                  <option value="shoes">Shoes</option>
+                  <option value="bags">Bags</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Subcategory *</span>
+                <input name="subcategory" value={editForm.subcategory} onChange={handleEditChange} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2" />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Material *</span>
+                <input name="material" value={editForm.material} onChange={handleEditChange} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2" />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Base Price *</span>
+                <input name="basePrice" type="number" min="0" step="0.01" value={editForm.basePrice} onChange={handleEditChange} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2" />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Total Stock</span>
+                <input name="stock" type="number" min="0" value={editForm.stock} onChange={handleEditChange} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2" />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Status</span>
+                <select name="isActive" value={String(editForm.isActive)} onChange={handleEditChange} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2">
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
+              </label>
+            </div>
+
+            <label className="block mt-4">
+              <span className="text-sm font-medium text-gray-700">Description *</span>
+              <textarea name="description" value={editForm.description} onChange={handleEditChange} rows={4} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2" />
+            </label>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+              <button onClick={closeEdit} className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={handleSaveEdit} disabled={savingEdit} className="px-5 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-300">
+                {savingEdit ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const OrdersTab: React.FC<{ orders: any[]; fetchSellerOrders: () => void }> = ({ orders, fetchSellerOrders }) => {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);

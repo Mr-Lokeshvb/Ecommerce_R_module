@@ -21,6 +21,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import SellerLoginPage from './pages/SellerLoginPage';
 import SellerRegisterPage from './pages/SellerRegisterPage';
+import AddProductPage from './pages/AddProductPage';
 import { useAuthStore } from './store/authStore';
 
 // FEATURE_DISABLED_ADMIN_START
@@ -35,12 +36,6 @@ import { useAuthStore } from './store/authStore';
 // Keep this import available for future re-enable:
 // import VerifyOTPPage from './pages/VerifyOTPPage';
 // FEATURE_DISABLED_OTP_END
-
-// FEATURE_DISABLED_SELLER_DASHBOARD_START
-// Product management is disabled while seller dashboard is limited to orders.
-// Keep this import available for future re-enable:
-// import AddProductPage from './pages/AddProductPage';
-// FEATURE_DISABLED_SELLER_DASHBOARD_END
 
 function App() {
   const { user, initializeAuth } = useAuthStore();
@@ -183,7 +178,11 @@ function App() {
             />
             <Route
               path="/seller/products/new"
-              element={<Navigate to="/seller-dashboard" replace />}
+              element={
+                <ProtectedRoute allowedRoles={['SELLER']}>
+                  <AddProductPage />
+                </ProtectedRoute>
+              }
             />
 
             {/* FEATURE_DISABLED_ADMIN_START

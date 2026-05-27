@@ -465,6 +465,7 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [reviewedProductIds, setReviewedProductIds] = useState<Set<string>>(new Set());
   
   // Review modal state
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -475,7 +476,37 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
 
   useEffect(() => {
     fetchOrders();
+    fetchReviewedProducts();
   }, []);
+
+  const getProductId = (item: any) => {
+    const productId = item?.productId?._id || item?.productId || item?._id;
+    return productId ? productId.toString() : '';
+  };
+
+  const isReviewed = (item: any) => reviewedProductIds.has(getProductId(item));
+
+  const getFirstReviewableItem = (order: any) => (
+    order.items?.find((item: any) => !isReviewed(item))
+  );
+
+  const hasReviewableItems = (order: any) => Boolean(getFirstReviewableItem(order));
+
+  const fetchReviewedProducts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_BASE_URL}/api/reviews/mine`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        setReviewedProductIds(new Set(response.data.data.productIds || []));
+      }
+    } catch (error) {
+      console.error('Error fetching reviewed products:', error);
+      setReviewedProductIds(new Set());
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -576,6 +607,7 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
 
       console.log('✅ Review submitted:', response.data);
       toast.success('Review submitted successfully!');
+      setReviewedProductIds((current) => new Set([...current, productId.toString()]));
       setShowReviewModal(false);
       setSelectedProduct(null);
       setSelectedOrder(null);
@@ -583,6 +615,7 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
       setReviewTitle('');
       setReviewComment('');
       fetchOrders();
+      fetchReviewedProducts();
     } catch (error: any) {
       console.error('❌ Review submission error:', error.response?.data);
       const errorMsg = error.response?.data?.errors 
@@ -662,7 +695,7 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
                     {order.items?.map((item: any, index: number) => (
                       <div key={index} className="flex items-center gap-2 text-xs bg-gray-100 px-3 py-1 rounded-full">
                         <span>{item.title} x{item.quantity}</span>
-                        {order.status === 'delivered' && (
+                        {order.status === 'delivered' && !isReviewed(item) && (
                           <button
                             onClick={() => {
                               setSelectedOrder(order);
@@ -681,12 +714,13 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
                 </div>
 
                 <div className="flex flex-col gap-2 lg:w-48">
-                  {order.status === 'delivered' && (
+                  {order.status === 'delivered' && hasReviewableItems(order) && (
                     <button
                       onClick={() => {
-                        if (order.items && order.items.length > 0) {
+                        const reviewableItem = getFirstReviewableItem(order);
+                        if (reviewableItem) {
                           setSelectedOrder(order);
-                          setSelectedProduct(order.items[0]);
+                          setSelectedProduct(reviewableItem);
                           setShowReviewModal(true);
                         }
                       }}

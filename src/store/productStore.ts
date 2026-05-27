@@ -198,19 +198,29 @@ export const useProductStore = create<ProductState>()(
         get().fetchSellerProducts();
         return response;
       } else {
-        throw new Error(response.message || 'Failed to create product');
+        const validationMessage = Array.isArray(response.errors)
+          ? response.errors.map((error: any) => error.message || error.msg).filter(Boolean).join(', ')
+          : '';
+        throw new Error(validationMessage || response.message || 'Failed to create product');
       }
     },
     updateProduct: async (productId, productData) => {
       const response = await api.updateSellerProduct(productId, productData);
       if (response.success) {
         get().fetchSellerProducts();
+      } else {
+        const validationMessage = Array.isArray(response.errors)
+          ? response.errors.map((error: any) => error.message || error.msg).filter(Boolean).join(', ')
+          : '';
+        throw new Error(validationMessage || response.message || 'Failed to update product');
       }
     },
     deleteProduct: async (productId) => {
       const response = await api.deleteSellerProduct(productId);
       if (response.success) {
         get().fetchSellerProducts();
+      } else {
+        throw new Error(response.message || 'Failed to delete product');
       }
     },
   })
