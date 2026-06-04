@@ -2,12 +2,7 @@ const nodemailer = require('nodemailer');
 const path = require('path');
 const fs = require('fs');
 
-// FEATURE_DISABLED_EMAIL_START
-// Email delivery is intentionally wired out for the active application.
-// Keep templates and route call sites intact so the system can be restored
-// later, but never create SMTP traffic while this flag is true.
-const EMAIL_SYSTEM_DISABLED = true;
-// FEATURE_DISABLED_EMAIL_END
+const EMAIL_SYSTEM_DISABLED = process.env.EMAIL_SYSTEM_DISABLED === 'true';
 
 // Create transporter
 const createTransporter = () => {

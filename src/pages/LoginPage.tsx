@@ -30,6 +30,18 @@ const LoginPage = () => {
     try {
       const result = await login(email, password);
       if (result.success) {
+        if (result.data?.requiresOTPVerification) {
+          toast.success('Please verify your email to continue.');
+          navigate('/verify-otp', {
+            state: {
+              email,
+              userType: 'customer',
+              flowType: 'registration'
+            }
+          });
+          return;
+        }
+
         // Get user from auth store to check role
         const { user } = useAuthStore.getState();
         if (user) {

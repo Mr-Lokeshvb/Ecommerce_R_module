@@ -47,10 +47,18 @@ const RegisterPage = () => {
       });
 
       if (result.success) {
+        if (result.data?.requiresOTPVerification) {
+          toast.success(result.message || 'OTP sent to your email.');
+          navigate('/verify-otp', {
+            state: {
+              email: result.data.email || formData.email,
+              userType: 'customer'
+            }
+          });
+          return;
+        }
+
         toast.success('Registration successful! Welcome to FashionVR.');
-        // FEATURE_DISABLED_OTP_START
-        // Previous flow redirected to /verify-otp here.
-        // FEATURE_DISABLED_OTP_END
         navigate('/customer-dashboard');
       } else {
         // Show specific error message from backend

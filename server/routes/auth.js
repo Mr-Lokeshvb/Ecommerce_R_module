@@ -26,12 +26,10 @@ const generateToken = (id) => {
   });
 };
 
-// FEATURE_DISABLED_OTP_START
-// OTP signup verification is disabled. Keep helper for future re-enable:
-// const generateOTP = () => {
-//   return Math.floor(100000 + Math.random() * 900000).toString();
-// };
-// FEATURE_DISABLED_OTP_END
+// Generate OTP
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
 
 // @route   POST /api/auth/register
 // @desc    Register a new customer
@@ -54,30 +52,33 @@ router.post('/register', [
         const { name, email, password } = req.body;
 
         const existingCustomer = await Customer.findOne({ email });
-        if (existingCustomer) {
+        if (existingCustomer?.isEmailVerified) {
             return res.status(400).json({
                 success: false,
                 message: 'A customer with this email already exists'
             });
         }
 
-        const customer = new Customer({ 
-            name, 
-            email, 
-            password,
-            isEmailVerified: true
-        });
+        const otp = generateOTP();
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+        const customer = existingCustomer || new Customer({ email });
+        customer.name = name;
+        customer.password = password;
+        customer.isEmailVerified = false;
+        customer.emailVerificationOTP = otp;
+        customer.emailVerificationOTPExpires = otpExpires;
         await customer.save();
 
-        // Send welcome email
+        // Send OTP email
         try {
             await sendEmail({
                 to: email,
-                subject: 'Welcome to Fashion Era!',
-                template: 'welcome',
+                subject: 'Verify your Fashion Era account',
+                template: 'otp-verification',
                 data: {
                     name,
-                    role: 'CUSTOMER'
+                    otp,
+                    expiresIn: 10
                 }
             });
             console.log(`✅ Welcome email sent to ${email}`);
@@ -85,20 +86,15 @@ router.post('/register', [
             console.error('Failed to send welcome email:', emailError);
         }
 
-        const token = generateToken(customer._id);
-
         res.status(201).json({
             success: true,
-            message: 'Registration successful!',
+            message: existingCustomer
+                ? 'Account already pending verification. A new OTP has been sent.'
+                : 'Registration started. Please verify the OTP sent to your email.',
             data: {
-                user: {
-                    id: customer._id,
-                    name: customer.name,
-                    email: customer.email,
-                    role: customer.role,
-                    isEmailVerified: customer.isEmailVerified
-                },
-                token
+                userId: customer._id,
+                email: customer.email,
+                requiresOTPVerification: true
             }
         });
     } catch (error) {
@@ -132,31 +128,34 @@ router.post('/seller/register', [
         const { name, email, password, storeName } = req.body;
 
         const existingSeller = await Seller.findOne({ email });
-        if (existingSeller) {
+        if (existingSeller?.isEmailVerified) {
             return res.status(400).json({
                 success: false,
                 message: 'A seller with this email already exists'
             });
         }
 
-        const seller = new Seller({ 
-            name, 
-            email, 
-            password, 
-            storeName,
-            isEmailVerified: true
-        });
+        const otp = generateOTP();
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+        const seller = existingSeller || new Seller({ email });
+        seller.name = name;
+        seller.password = password;
+        seller.storeName = storeName;
+        seller.isEmailVerified = false;
+        seller.emailVerificationOTP = otp;
+        seller.emailVerificationOTPExpires = otpExpires;
         await seller.save();
 
-        // Send welcome email
+        // Send OTP email
         try {
             await sendEmail({
                 to: email,
-                subject: 'Welcome to Fashion Era Seller Platform!',
-                template: 'welcome',
+                subject: 'Verify your Fashion Era seller account',
+                template: 'otp-verification',
                 data: {
                     name,
-                    role: 'SELLER'
+                    otp,
+                    expiresIn: 10
                 }
             });
             console.log(`✅ Welcome email sent to seller ${email}`);
@@ -164,47 +163,68 @@ router.post('/seller/register', [
             console.error('Failed to send welcome email:', emailError);
         }
 
-        const token = generateToken(seller._id);
-
         res.status(201).json({
             success: true,
-            message: 'Seller registration successful!',
+            message: existingSeller
+                ? 'Seller account already pending verification. A new OTP has been sent.'
+                : 'Seller registration started. Please verify the OTP sent to your email.',
             data: {
-                user: {
-                    id: seller._id,
-                    name: seller.name,
-                    email: seller.email,
-                    role: seller.role,
-                    storeName: seller.storeName,
-                    isEmailVerified: seller.isEmailVerified
-                },
-                token
+                sellerId: seller._id,
+                email: seller.email,
+                requiresOTPVerification: true
             }
         });
     } catch (error) {
         console.error('Seller registration error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error during seller registration'
+            message: process.env.NODE_ENV === 'production'
+                ? 'Server error during seller registration'
+                : `Server error during seller registration: ${error.message}`,
+            error: process.env.NODE_ENV === 'production' ? undefined : error.message
         });
     }
 });
 
-// FEATURE_DISABLED_OTP_START
-// OTP signup verification endpoints are disabled. The original route handlers
-// below are preserved for future re-enable, but these responses short-circuit
-// any stale requests before validation runs.
-const otpDisabled = (req, res) => {
-    res.status(404).json({
-        success: false,
-        message: 'OTP verification is disabled'
-    });
-};
-router.post('/verify-otp', otpDisabled);
-router.post('/seller/verify-otp', otpDisabled);
-router.post('/resend-otp', otpDisabled);
-router.post('/seller/resend-otp', otpDisabled);
-// FEATURE_DISABLED_OTP_END
+// OTP signup verification routes are active. Verified users bypass OTP during login.
+
+// @route   POST /api/auth/check-verification
+// @desc    Check whether an email already belongs to a verified account
+// @access  Public
+router.post('/check-verification', [
+    body('email').isEmail().normalizeEmail().withMessage('Please enter a valid email'),
+    body('userType').optional().isIn(['customer', 'seller']).withMessage('Invalid user type')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: errors.array()
+            });
+        }
+
+        const { email, userType = 'customer' } = req.body;
+        const account = userType === 'seller'
+            ? await Seller.findOne({ email })
+            : await Customer.findOne({ email });
+
+        res.json({
+            success: true,
+            data: {
+                exists: Boolean(account),
+                isEmailVerified: Boolean(account?.isEmailVerified)
+            }
+        });
+    } catch (error) {
+        console.error('Check verification error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error while checking verification'
+        });
+    }
+});
 
 // @route   POST /api/auth/verify-otp
 // @desc    Verify OTP for customer

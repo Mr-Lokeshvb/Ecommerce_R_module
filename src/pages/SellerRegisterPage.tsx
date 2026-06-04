@@ -52,10 +52,18 @@ const SellerRegisterPage = () => {
       });
 
       if (result.success) {
+        if (result.data?.requiresOTPVerification) {
+          toast.success(result.message || 'OTP sent to your email.');
+          navigate('/verify-otp', {
+            state: {
+              email: result.data.email || formData.email,
+              userType: 'seller'
+            }
+          });
+          return;
+        }
+
         toast.success('Registration successful! Welcome to your seller dashboard.');
-        // FEATURE_DISABLED_OTP_START
-        // Previous flow redirected to /verify-otp here.
-        // FEATURE_DISABLED_OTP_END
         navigate('/seller-dashboard');
       } else {
         // Show specific error message from backend

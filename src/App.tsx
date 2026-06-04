@@ -22,6 +22,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import SellerLoginPage from './pages/SellerLoginPage';
 import SellerRegisterPage from './pages/SellerRegisterPage';
 import AddProductPage from './pages/AddProductPage';
+import VerifyOTPPage from './pages/VerifyOTPPage';
 import { useAuthStore } from './store/authStore';
 
 // FEATURE_DISABLED_ADMIN_START
@@ -30,12 +31,6 @@ import { useAuthStore } from './store/authStore';
 // import AdminDashboard from './pages/AdminDashboard';
 // import AdminLoginPage from './pages/AdminLoginPage';
 // FEATURE_DISABLED_ADMIN_END
-
-// FEATURE_DISABLED_OTP_START
-// OTP signup verification page is intentionally unwired from the active app.
-// Keep this import available for future re-enable:
-// import VerifyOTPPage from './pages/VerifyOTPPage';
-// FEATURE_DISABLED_OTP_END
 
 function App() {
   const { user, initializeAuth } = useAuthStore();
@@ -107,11 +102,7 @@ function App() {
               element={user ? <Navigate to={getDashboardRoute(user.role)} replace /> : <RegisterPage />}
             />
             <Route path="/registration-success" element={<RegistrationSuccessPage />} />
-            {/* FEATURE_DISABLED_OTP_START
-                Previous OTP route preserved for future:
-                <Route path="/verify-otp" element={<VerifyOTPPage />} />
-            FEATURE_DISABLED_OTP_END */}
-            <Route path="/verify-otp" element={<Navigate to="/" replace />} />
+            <Route path="/verify-otp" element={<VerifyOTPPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
 

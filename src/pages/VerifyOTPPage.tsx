@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, ArrowLeft, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { api } from '../utils/api';
 import toast from 'react-hot-toast';
 
 const VerifyOTPPage = () => {
@@ -23,6 +24,19 @@ const VerifyOTPPage = () => {
       return;
     }
 
+    const checkVerification = async () => {
+      const result = await api.checkVerification(email, userType);
+      if (result.success && result.data?.isEmailVerified) {
+        toast.success('This email is already verified. Please login.');
+        navigate(userType === 'seller' ? '/seller-login' : '/login', {
+          replace: true,
+          state: { email }
+        });
+      }
+    };
+
+    checkVerification();
+
     const interval = setInterval(() => {
       setTimer((prev) => {
         if (prev <= 0) {
@@ -34,7 +48,7 @@ const VerifyOTPPage = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [email, navigate]);
+  }, [email, navigate, userType]);
 
   const handleOtpChange = (index: number, value: string) => {
     if (value.length > 1) return;

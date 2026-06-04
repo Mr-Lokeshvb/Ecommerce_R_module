@@ -1,5 +1,13 @@
 // API utility for making requests to the backend
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const getDefaultApiBaseUrl = () => {
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return 'https://ecommercermodule-production.up.railway.app';
+  }
+
+  return 'http://localhost:5000';
+};
+
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || getDefaultApiBaseUrl()).replace(/\/$/, '');
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -133,6 +141,10 @@ class ApiClient {
 
   async resendSellerOTP(email: string) {
     return this.post('/api/auth/seller/resend-otp', { email });
+  }
+
+  async checkVerification(email: string, userType: 'customer' | 'seller' = 'customer') {
+    return this.post('/api/auth/check-verification', { email, userType });
   }
 
   async getCurrentUser() {

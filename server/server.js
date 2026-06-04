@@ -133,10 +133,7 @@ app.get('/health', async (req, res) => {
       timestamp: new Date().toISOString(),
       db: dbStatus,
       paypal: process.env.PAYPAL_CLIENT_ID ? 'configured' : 'not configured',
-      // FEATURE_DISABLED_EMAIL_START
-      // SMTP may still be configured in .env, but app-level mail sending is disabled.
-      email: 'disabled'
-      // FEATURE_DISABLED_EMAIL_END
+      email: process.env.EMAIL_SYSTEM_DISABLED === 'true' ? 'disabled' : 'configured'
     });
   } catch (error) {
     res.status(500).json({

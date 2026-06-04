@@ -16,8 +16,8 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   token: string | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  sellerLogin: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string; data?: any }>;
+  sellerLogin: (email: string, password: string) => Promise<{ success: boolean; message?: string; data?: any }>;
   register: (userData: Omit<User, 'id'> & { password: string }) => Promise<{ success: boolean; message?: string; data?: any }>;
   sellerRegister: (userData: Omit<User, 'id'> & { password: string }) => Promise<{ success: boolean; message?: string; data?: any }>;
   verifyOTP: (email: string, otp: string) => Promise<{ success: boolean; message?: string }>;
@@ -44,7 +44,17 @@ export const useAuthStore = create<AuthState>()(
           const response = await api.sellerLogin(email, password);
 
           if (response.success && response.data) {
+            if (response.data.requiresOTPVerification) {
+              return { success: true, message: response.message, data: response.data };
+            }
+
             const { user, token } = response.data;
+            if (!user || !token) {
+              return {
+                success: false,
+                message: response.message || 'Login response was missing user or token'
+              };
+            }
 
             set({
               user,
@@ -54,7 +64,7 @@ export const useAuthStore = create<AuthState>()(
 
             // Store token in localStorage for API calls
             localStorage.setItem('token', token);
-            return { success: true };
+            return { success: true, data: response.data };
           }
 
           console.error('Seller login failed:', response.message);
@@ -76,7 +86,17 @@ export const useAuthStore = create<AuthState>()(
           const response = await api.login(email, password);
 
           if (response.success && response.data) {
+            if (response.data.requiresOTPVerification) {
+              return { success: true, message: response.message, data: response.data };
+            }
+
             const { user, token } = response.data;
+            if (!user || !token) {
+              return {
+                success: false,
+                message: response.message || 'Login response was missing user or token'
+              };
+            }
 
             set({
               user,
@@ -86,7 +106,7 @@ export const useAuthStore = create<AuthState>()(
 
             // Store token in localStorage for API calls
             localStorage.setItem('token', token);
-            return { success: true };
+            return { success: true, data: response.data };
           }
 
           console.error('Login failed:', response.message);
