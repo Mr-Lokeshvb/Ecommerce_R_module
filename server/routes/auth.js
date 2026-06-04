@@ -84,6 +84,12 @@ router.post('/register', [
             console.log(`✅ Welcome email sent to ${email}`);
         } catch (emailError) {
             console.error('Failed to send welcome email:', emailError);
+            return res.status(500).json({
+                success: false,
+                message: process.env.NODE_ENV === 'production'
+                    ? 'Could not send OTP email. Please try again later.'
+                    : `Could not send OTP email: ${emailError.message}`
+            });
         }
 
         res.status(201).json({
@@ -161,6 +167,12 @@ router.post('/seller/register', [
             console.log(`✅ Welcome email sent to seller ${email}`);
         } catch (emailError) {
             console.error('Failed to send welcome email:', emailError);
+            return res.status(500).json({
+                success: false,
+                message: process.env.NODE_ENV === 'production'
+                    ? 'Could not send OTP email. Please try again later.'
+                    : `Could not send seller OTP email: ${emailError.message}`
+            });
         }
 
         res.status(201).json({

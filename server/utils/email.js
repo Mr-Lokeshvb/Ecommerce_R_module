@@ -7,7 +7,12 @@ const EMAIL_SYSTEM_DISABLED = process.env.EMAIL_SYSTEM_DISABLED === 'true';
 // Create transporter
 const createTransporter = () => {
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST || 'smtp.office365.com',
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: process.env.SMTP_SECURE === 'true',
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
@@ -534,7 +539,7 @@ const sendEmail = async ({ to, subject, template, data }) => {
     const html = templates[template] ? templates[template](data) : data.html;
     
     const mailOptions = {
-      from: `"Fashion Era" <${process.env.EMAIL_USER}>`,
+      from: process.env.EMAIL_FROM || `"Fashion Era" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html

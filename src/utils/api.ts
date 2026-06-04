@@ -28,6 +28,8 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 30000);
     
     // FEATURE_DISABLED_ADMIN_START
     // Admin route token handling preserved for future:
@@ -51,6 +53,7 @@ class ApiClient {
         ...defaultHeaders,
         ...options.headers,
       },
+      signal: controller.signal,
       ...options,
     };
 
@@ -59,6 +62,7 @@ class ApiClient {
       
       const response = await fetch(url, config);
       const data = await response.json();
+      window.clearTimeout(timeoutId);
 
       if (!response.ok) {
         console.error(`❌ API Error: ${response.status}`, data);
@@ -72,10 +76,13 @@ class ApiClient {
       console.log(`✅ API Success: ${options.method || 'GET'} ${url}`);
       return data;
     } catch (error) {
+      window.clearTimeout(timeoutId);
       console.error(`❌ Network Error:`, error);
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Network error'
+        message: error instanceof DOMException && error.name === 'AbortError'
+          ? 'Request timed out. Please check the server logs and try again.'
+          : error instanceof Error ? error.message : 'Network error'
       };
     }
   }
