@@ -7,9 +7,7 @@ const EMAIL_SYSTEM_DISABLED = process.env.EMAIL_SYSTEM_DISABLED === 'true';
 // Create transporter
 const createTransporter = () => {
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.office365.com',
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === 'true',
+    service: 'gmail',
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000,
