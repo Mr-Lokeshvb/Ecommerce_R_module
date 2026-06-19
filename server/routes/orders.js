@@ -501,9 +501,7 @@ router.put('/:id/return', auth, async (req, res) => {
       });
     }
 
-    const order = await Order.findById(req.params.id)
-      .populate('items.productId', 'name images')
-      .populate('customer', 'name email');
+    const order = await Order.findById(req.params.id);
 
     if (!order) {
       return res.status(404).json({
@@ -513,7 +511,7 @@ router.put('/:id/return', auth, async (req, res) => {
     }
 
     // Check if order belongs to the customer
-    if (order.customer._id.toString() !== req.user.id) {
+    if (order.customer.toString() !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'Unauthorized access'
@@ -548,60 +546,74 @@ router.put('/:id/return', auth, async (req, res) => {
       });
     }
 
-    order.returnRequested = true;
-    order.returnReason = reason;
-    order.returnRequestedAt = new Date();
-
-    await order.save();
-
-    // Send email notifications
-    try {
-      // Send confirmation to customer
-      await sendEmail({
-        to: order.customer.email,
-        subject: `Return Request Confirmed - Order #${order.orderNumber}`,
-        template: 'return-request-confirmation',
-        data: {
-          customerName: order.customer.name,
-          orderNumber: order.orderNumber,
-          returnReason: reason,
-          orderTotal: order.total
+    const updatedOrder = await Order.findByIdAndUpdate(
+      order._id,
+      {
+        $set: {
+          returnRequested: true,
+          returnReason: reason.trim(),
+          returnRequestedAt: new Date()
         }
+      },
+      { new: true }
+    ).populate('customer', 'name email');
+
+    if (!updatedOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
       });
-      console.log('✅ Return request confirmation email sent to customer');
-
-      // Send notification to sellers
-      const sellerIds = order.items && order.items.length > 0 
-        ? [...new Set(order.items.map(item => item.seller?.toString()).filter(Boolean))]
-        : [];
-      
-      for (const sellerId of sellerIds) {
-        const seller = await Seller.findById(sellerId);
-        if (seller && seller.email) {
-          await sendEmail({
-            to: seller.email,
-            subject: `Return Request Received - Order #${order.orderNumber}`,
-            template: 'seller-return-notification',
-            data: {
-              sellerName: seller.name,
-              customerName: order.customer.name,
-              orderNumber: order.orderNumber,
-              returnReason: reason,
-              orderTotal: order.total
-            }
-          });
-          console.log(`✅ Return request notification sent to seller: ${seller.email}`);
-        }
-      }
-    } catch (emailError) {
-      console.error('❌ Return notification email error:', emailError);
-      // Continue without failing the request
     }
 
     res.json({
       success: true,
       message: 'Return request submitted successfully. The seller will review your request.',
-      data: order
+      data: updatedOrder.toObject ? updatedOrder.toObject() : updatedOrder
+    });
+
+    setImmediate(async () => {
+      try {
+        // Send confirmation to customer
+        await sendEmail({
+          to: updatedOrder.customer.email,
+          subject: `Return Request Confirmed - Order #${updatedOrder.orderNumber}`,
+          template: 'return-request-confirmation',
+          data: {
+            customerName: updatedOrder.customer.name,
+            orderNumber: updatedOrder.orderNumber,
+            returnReason: reason.trim(),
+            orderTotal: updatedOrder.total
+          }
+        });
+        console.log('Return request confirmation email sent to customer');
+
+        // Send notification to sellers
+        const sellerIds = updatedOrder.items && updatedOrder.items.length > 0
+          ? [...new Set(updatedOrder.items.map(item => item.seller?.toString()).filter(Boolean))]
+          : [];
+
+        for (const sellerId of sellerIds) {
+          const seller = await Seller.findById(sellerId);
+          if (seller && seller.email) {
+            await sendEmail({
+              to: seller.email,
+              subject: `Return Request Received - Order #${updatedOrder.orderNumber}`,
+              template: 'seller-return-notification',
+              data: {
+                sellerName: seller.name,
+                customerName: updatedOrder.customer.name,
+                orderNumber: updatedOrder.orderNumber,
+                returnReason: reason.trim(),
+                orderTotal: updatedOrder.total
+              }
+            });
+            console.log(`Return request notification sent to seller: ${seller.email}`);
+          }
+        }
+      } catch (emailError) {
+        console.error('Return notification email error:', emailError);
+        // Emails are non-blocking after the return request is saved.
+      }
     });
   } catch (error) {
     console.error('Request return error:', error);
