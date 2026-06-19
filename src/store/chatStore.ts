@@ -215,15 +215,8 @@ export const useChatStore = create<ChatState & ChatActions>()(
           }).join('\n');
         };
 
-        // FEATURE_DISABLED_RETURNS_START
-        // Return/exchange support is disabled before local fallback can surface
-        // the old return-window guidance below.
-        if (lowerMessage.includes('return') || lowerMessage.includes('exchange') || lowerMessage.includes('wrong') || lowerMessage.includes('defective')) {
-          response = "Returns and exchanges are currently disabled. I can still help you track orders, check delivery updates, or connect you with support for product issues.";
-        }
-        // FEATURE_DISABLED_RETURNS_END
         // Product-related queries with real data
-        else if (lowerMessage.includes('product') && (lowerMessage.includes('under') || lowerMessage.includes('below') || lowerMessage.includes('<') || lowerMessage.includes('less'))) {
+        if (lowerMessage.includes('product') && (lowerMessage.includes('under') || lowerMessage.includes('below') || lowerMessage.includes('<') || lowerMessage.includes('less'))) {
           if (lowerMessage.includes('50') || lowerMessage.includes('$50')) {
             const affordableProducts = filterProductsByPrice(50);
             if (affordableProducts.length > 0) {

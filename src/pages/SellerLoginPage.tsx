@@ -214,14 +214,14 @@ const SellerLoginPage = () => {
             </div>
           </div>
 
-          {/* Quick Access for Testing */}
+          {/* Quick Access for Testing
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <h4 className="text-sm font-medium text-gray-900 mb-2">🧪 Test Seller Account:</h4>
             <div className="text-sm text-gray-600">
               <p><strong>Email:</strong> seller@example.com</p>
               <p><strong>Password:</strong> password123</p>
             </div>
-          </div>
+          </div> */}
 
           {/* Navigation Links */}
           <div className="mt-6 text-center space-y-2">

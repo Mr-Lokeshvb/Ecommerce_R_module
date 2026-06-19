@@ -6,6 +6,72 @@ const { sendEmail } = require('../utils/email');
 
 const router = express.Router();
 
+const getCustomerStatusEmail = (order, status, trackingNumber, carrier, estimatedDelivery) => {
+    const customerName = order.customer?.name || 'Customer';
+    const orderNumber = order.orderNumber || order._id;
+    const deliveryDate = estimatedDelivery || order.estimatedDelivery || new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+
+    if (status === 'confirmed') {
+        return {
+            subject: `Order Confirmed - #${orderNumber}`,
+            template: 'order-confirmed-by-seller',
+            data: {
+                customerName,
+                orderNumber,
+                orderTotal: order.total,
+                estimatedDelivery: deliveryDate,
+                sellerName: 'Seller'
+            }
+        };
+    }
+
+    if (status === 'shipping') {
+        return {
+            subject: `Your Order Has Shipped - #${orderNumber}`,
+            template: 'order-shipped',
+            data: {
+                customerName,
+                orderNumber,
+                trackingNumber: trackingNumber || order.trackingNumber || 'Will be updated soon',
+                carrier: carrier || order.carrier || 'Delivery partner',
+                estimatedDelivery: deliveryDate
+            }
+        };
+    }
+
+    if (status === 'delivered') {
+        return {
+            subject: `Order Delivered - #${orderNumber}`,
+            template: 'order-delivered',
+            data: {
+                customerName,
+                orderNumber,
+                orderTotal: order.total,
+                deliveredAt: order.deliveredAt || new Date()
+            }
+        };
+    }
+
+    const statusMessages = {
+        pending: 'Your order is pending confirmation.',
+        packing: 'Your order is being packed and prepared for shipment.',
+        cancelled: 'Your order has been cancelled.'
+    };
+
+    return {
+        subject: `Order Status Updated - #${orderNumber}`,
+        template: 'order-status-update',
+        data: {
+            customerName,
+            orderNumber,
+            status,
+            statusMessage: statusMessages[status] || `Your order status is now ${status}.`,
+            orderTotal: order.total,
+            estimatedDelivery: deliveryDate
+        }
+    };
+};
+
 // @route   GET /api/seller/orders
 // @desc    Get all orders for a seller
 // @access  Private (Seller)
@@ -55,6 +121,19 @@ router.put('/:id/status', [auth, authorize('SELLER')], async (req, res) => {
         if (!order) {
             return res.status(404).json({ success: false, message: 'Order not found' });
         }
+
+        if (order.customer?.email) {
+            try {
+                const email = getCustomerStatusEmail(order, status, trackingNumber, carrier, estimatedDelivery);
+                await sendEmail({
+                    to: order.customer.email,
+                    ...email
+                });
+                console.log(`Order status email sent to customer for order ${order.orderNumber || order._id}`);
+            } catch (emailError) {
+                console.error('Failed to send order status email:', emailError.message);
+            }
+        }
         
         res.json({ success: true, message: 'Order status updated successfully', data: order });
     } catch (error) {
@@ -67,13 +146,6 @@ router.put('/:id/status', [auth, authorize('SELLER')], async (req, res) => {
 // @desc    Approve/Reject return request
 // @access  Private (Seller)
 router.put('/:id/return', [auth, authorize('SELLER')], async (req, res) => {
-    // FEATURE_DISABLED_RETURNS_START
-    return res.status(404).json({
-        success: false,
-        message: 'Returns are disabled'
-    });
-    // FEATURE_DISABLED_RETURNS_END
-
     try {
         const { approve, note } = req.body;
         
@@ -179,12 +251,7 @@ router.get('/analytics', [auth, authorize('SELLER')], async (req, res) => {
         const packingOrders = orders.filter(o => o.status === 'packing').length;
         const shippingOrders = orders.filter(o => o.status === 'shipping').length;
         const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
-        // FEATURE_DISABLED_RETURNS_START
-        // Return analytics are wired out with the return system.
-        const returnRequests = 0;
-        // Previous logic for future restore:
-        // const returnRequests = orders.filter(o => o.returnRequested && !o.returnApproved).length;
-        // FEATURE_DISABLED_RETURNS_END
+        const returnRequests = orders.filter(o => o.returnRequested && !o.returnApproved).length;
         
         res.json({
             success: true,

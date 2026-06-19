@@ -64,11 +64,16 @@ const ProfilePage = () => {
   }, [user?.id]);
 
   const handleSaveProfile = async () => {
-    const apiCall = user?.role === 'SELLER' 
-        ? api.updateSellerProfile 
-        : api.updateCustomerProfile;
-    
-    const response = await apiCall(editForm);
+    const profileData = {
+        name: editForm.name.trim(),
+        email: editForm.email.trim(),
+        storeName: editForm.storeName.trim(),
+    };
+
+    const response = user?.role === 'SELLER'
+        ? await api.updateSellerProfile(profileData)
+        : await api.updateCustomerProfile(profileData);
+
     if (response.success && response.data) {
         updateProfile(response.data.user);
         setIsEditing(false);

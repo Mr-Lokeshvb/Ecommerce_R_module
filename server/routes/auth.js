@@ -8,6 +8,22 @@ const { sendEmail } = require('../utils/email');
 
 const router = express.Router();
 
+const getRequestName = (body = {}) => {
+  const directName = body.name || body.fullName || body.data?.name;
+  if (directName && String(directName).trim()) {
+    return String(directName).trim();
+  }
+
+  const firstName = body.firstName || body.data?.firstName || '';
+  const lastName = body.lastName || body.data?.lastName || '';
+  return `${firstName} ${lastName}`.trim();
+};
+
+const getRequestStoreName = (body = {}) => {
+  const storeName = body.storeName || body.businessName || body.data?.storeName || body.data?.businessName;
+  return storeName ? String(storeName).trim() : '';
+};
+
 console.log('🔧 Auth routes module loaded');
 
 // Test route
@@ -35,7 +51,11 @@ const generateOTP = () => {
 // @desc    Register a new customer
 // @access  Public
 router.post('/register', [
-    body('name').trim().isLength({ min: 2 }).withMessage('Name must be at least 2 characters'),
+    body('name')
+        .customSanitizer((value, { req }) => getRequestName({ ...req.body, name: value }))
+        .trim()
+        .isLength({ min: 2 })
+        .withMessage('Name must be at least 2 characters'),
     body('email').isEmail().normalizeEmail().withMessage('Please enter a valid email'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 ], async (req, res) => {
@@ -116,10 +136,18 @@ router.post('/register', [
 // @desc    Register a new seller
 // @access  Public
 router.post('/seller/register', [
-    body('name').trim().isLength({ min: 2 }).withMessage('Name must be at least 2 characters'),
+    body('name')
+        .customSanitizer((value, { req }) => getRequestName({ ...req.body, name: value }))
+        .trim()
+        .isLength({ min: 2 })
+        .withMessage('Name must be at least 2 characters'),
     body('email').isEmail().normalizeEmail().withMessage('Please enter a valid email'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-    body('storeName').trim().isLength({ min: 2 }).withMessage('Store name must be at least 2 characters'),
+    body('storeName')
+        .customSanitizer((value, { req }) => getRequestStoreName({ ...req.body, storeName: value }))
+        .trim()
+        .isLength({ min: 2 })
+        .withMessage('Store name must be at least 2 characters'),
 ], async (req, res) => {
     try {
         const errors = validationResult(req);

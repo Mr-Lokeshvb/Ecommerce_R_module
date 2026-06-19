@@ -8,6 +8,7 @@ import {
   Edit3,
   Package,
   PackageCheck,
+  RotateCcw,
   ShoppingCart,
   Target,
   Trash2,
@@ -493,6 +494,7 @@ const OrdersTab: React.FC<{ orders: any[]; fetchSellerOrders: () => void }> = ({
       case 'confirmed': return 'text-indigo-600 bg-indigo-100';
       case 'pending': return 'text-yellow-600 bg-yellow-100';
       case 'cancelled': return 'text-red-600 bg-red-100';
+      case 'returned': return 'text-orange-600 bg-orange-100';
       default: return 'text-gray-600 bg-gray-100';
     }
   };
@@ -528,6 +530,30 @@ const OrdersTab: React.FC<{ orders: any[]; fetchSellerOrders: () => void }> = ({
     }
   };
 
+  const processReturnRequest = async (orderId: string, approve: boolean) => {
+    const note = window.prompt(
+      approve
+        ? 'Optional approval note for the customer:'
+        : 'Reason for rejecting this return request:'
+    );
+
+    if (note === null) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(
+        `${API_BASE_URL}/api/seller/orders/${orderId}/return`,
+        { approve, note },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      toast.success(approve ? 'Return approved' : 'Return rejected');
+      fetchSellerOrders();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to process return request');
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'pending': return <Clock className="h-4 w-4" />;
@@ -536,6 +562,7 @@ const OrdersTab: React.FC<{ orders: any[]; fetchSellerOrders: () => void }> = ({
       case 'shipping': return <Truck className="h-4 w-4" />;
       case 'delivered': return <CheckCircle className="h-4 w-4" />;
       case 'cancelled': return <XCircle className="h-4 w-4" />;
+      case 'returned': return <RotateCcw className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
   };
@@ -543,7 +570,9 @@ const OrdersTab: React.FC<{ orders: any[]; fetchSellerOrders: () => void }> = ({
   const safeOrders = Array.isArray(orders) ? orders : [];
   const filteredOrders = filterStatus === 'all'
     ? safeOrders
-    : safeOrders.filter(order => order.status === filterStatus);
+    : filterStatus === 'returns'
+      ? safeOrders.filter(order => order.returnRequested && !order.returnApproved)
+      : safeOrders.filter(order => order.status === filterStatus);
 
   return (
     <div className="space-y-6">
@@ -562,6 +591,8 @@ const OrdersTab: React.FC<{ orders: any[]; fetchSellerOrders: () => void }> = ({
           <option value="shipping">Shipping</option>
           <option value="delivered">Delivered</option>
           <option value="cancelled">Cancelled</option>
+          <option value="returned">Returned</option>
+          <option value="returns">Return Requests</option>
         </select>
       </div>
 
@@ -584,6 +615,12 @@ const OrdersTab: React.FC<{ orders: any[]; fetchSellerOrders: () => void }> = ({
                       {getStatusIcon(order.status)}
                       {order.status}
                     </span>
+                    {order.returnRequested && (
+                      <span className="px-3 py-1 rounded-full text-xs font-medium text-orange-700 bg-orange-100 flex items-center gap-1">
+                        <RotateCcw className="h-4 w-4" />
+                        {order.returnApproved ? 'Return approved' : 'Return requested'}
+                      </span>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -619,7 +656,24 @@ const OrdersTab: React.FC<{ orders: any[]; fetchSellerOrders: () => void }> = ({
                 </div>
 
                 <div className="flex flex-col gap-2 lg:w-48">
-                  {order.status !== 'delivered' && order.status !== 'cancelled' ? (
+                  {order.returnRequested && !order.returnApproved ? (
+                    <>
+                      <button
+                        onClick={() => processReturnRequest(order._id || order.id, true)}
+                        className="w-full bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        Approve Return
+                      </button>
+                      <button
+                        onClick={() => processReturnRequest(order._id || order.id, false)}
+                        className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm flex items-center justify-center gap-2"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Reject Return
+                      </button>
+                    </>
+                  ) : order.status !== 'delivered' && order.status !== 'cancelled' && order.status !== 'returned' ? (
                     <button
                       onClick={() => {
                         setSelectedOrder(order);

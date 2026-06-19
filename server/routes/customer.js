@@ -32,8 +32,9 @@ router.put('/profile', [
             return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
         }
 
-        const { name, phone } = req.body;
-        const updates = { name, phone };
+        const updates = {};
+        if (req.body.name !== undefined) updates.name = req.body.name.trim();
+        if (req.body.phone !== undefined) updates.phone = req.body.phone.trim();
 
         const customer = await Customer.findByIdAndUpdate(req.user.id, updates, { new: true });
         res.json({ success: true, message: 'Profile updated successfully', data: { user: customer } });

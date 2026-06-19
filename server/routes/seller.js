@@ -34,8 +34,10 @@ router.put('/profile', [
             return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
         }
 
-        const { name, phone, storeName } = req.body;
-        const updates = { name, phone, storeName };
+        const updates = {};
+        if (req.body.name !== undefined) updates.name = req.body.name.trim();
+        if (req.body.phone !== undefined) updates.phone = req.body.phone.trim();
+        if (req.body.storeName !== undefined) updates.storeName = req.body.storeName.trim();
 
         const seller = await Seller.findByIdAndUpdate(req.user.id, updates, { new: true });
         res.json({ success: true, message: 'Profile updated successfully', data: { user: seller } });

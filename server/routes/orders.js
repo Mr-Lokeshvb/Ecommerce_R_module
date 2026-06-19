@@ -491,13 +491,6 @@ router.get('/track/:trackingNumber', async (req, res) => {
 // @desc    Request return for a delivered order
 // @access  Private (Customer)
 router.put('/:id/return', auth, async (req, res) => {
-  // FEATURE_DISABLED_RETURNS_START
-  return res.status(404).json({
-    success: false,
-    message: 'Returns are disabled'
-  });
-  // FEATURE_DISABLED_RETURNS_END
-
   try {
     const { reason } = req.body;
 

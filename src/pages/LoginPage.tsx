@@ -252,7 +252,7 @@ const LoginPage = () => {
         </form>
         </div>
 
-        {/* Customer Demo Credentials */}
+        {/* Customer Demo Credentials
         <div className="mt-8 p-6 bg-white rounded-xl shadow-lg">
           <h3 className="text-center font-semibold text-gray-900 mb-4">🧪 Try Demo Account</h3>
           <div className="bg-purple-50 p-4 rounded-lg">
@@ -265,7 +265,7 @@ const LoginPage = () => {
           <p className="text-xs text-gray-500 mt-3 text-center">
             Use these credentials to explore the customer dashboard
           </p>
-        </div>
+        </div> */}
 
         {/* Trust Indicators */}
         <div className="mt-6 p-4 bg-white rounded-xl shadow-lg">

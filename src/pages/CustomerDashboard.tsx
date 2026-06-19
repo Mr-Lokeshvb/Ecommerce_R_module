@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { Package, Heart, Eye, User, MapPin, CreditCard, Clock, Star, ShoppingBag, MessageCircle, Truck, CheckCircle } from 'lucide-react';
+import { Package, Heart, Eye, User, MapPin, CreditCard, Clock, Star, ShoppingBag, MessageCircle, Truck, CheckCircle, RotateCcw } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useWishlistStore } from '../store/wishlistStore';
 import { useCartStore } from '../store/cartStore';
@@ -473,6 +473,8 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewTitle, setReviewTitle] = useState('');
   const [reviewComment, setReviewComment] = useState('');
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returnReason, setReturnReason] = useState('');
 
   useEffect(() => {
     fetchOrders();
@@ -549,10 +551,31 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
     }
   };
 
-  // FEATURE_DISABLED_RETURNS_START
-  // Return request handling is disabled. Keep previous implementation in history/comments
-  // for future re-enable; customer order reviews remain active.
-  // FEATURE_DISABLED_RETURNS_END
+  const handleRequestReturn = async () => {
+    if (!selectedOrder) return;
+
+    if (!returnReason.trim()) {
+      toast.error('Please provide a reason for the return');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(
+        `${API_BASE_URL}/api/orders/${selectedOrder._id}/return`,
+        { reason: returnReason.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      toast.success('Return request submitted');
+      setShowReturnModal(false);
+      setSelectedOrder(null);
+      setReturnReason('');
+      fetchOrders();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to submit return request');
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -567,9 +590,28 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
     }
   };
 
-  // FEATURE_DISABLED_RETURNS_START
-  // Return window calculation disabled.
-  // FEATURE_DISABLED_RETURNS_END
+  const isReturnWindowOpen = (order: any) => {
+    if (order.status !== 'delivered' || order.returnRequested) return false;
+    const deliveredDate = order.deliveredAt || order.updatedAt;
+    if (!deliveredDate) return false;
+    const daysSinceDelivery = Math.floor((Date.now() - new Date(deliveredDate).getTime()) / (1000 * 60 * 60 * 24));
+    return daysSinceDelivery <= 30;
+  };
+
+  const getReturnWindowMessage = (order: any) => {
+    if (order.returnRequested) {
+      return order.returnApproved ? 'Return approved' : 'Return requested';
+    }
+
+    if (order.status !== 'delivered') return '';
+
+    const deliveredDate = order.deliveredAt || order.updatedAt;
+    if (!deliveredDate) return 'Return window unavailable';
+
+    const daysSinceDelivery = Math.floor((Date.now() - new Date(deliveredDate).getTime()) / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.max(0, 30 - daysSinceDelivery);
+    return daysLeft > 0 ? `${daysLeft} days left to return` : 'Return window expired';
+  };
 
   const handleSubmitReview = async () => {
     if (!reviewTitle.trim() || reviewTitle.length < 5) {
@@ -665,9 +707,11 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
                     {order.status}
                   </span>
-                  {/* FEATURE_DISABLED_RETURNS_START
-                      Return status badges hidden while return functionality is disabled.
-                  FEATURE_DISABLED_RETURNS_END */}
+                  {order.returnRequested && (
+                    <span className="px-3 py-1 rounded-full text-sm font-medium text-orange-700 bg-orange-100">
+                      {order.returnApproved ? 'Return approved' : 'Return requested'}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -731,9 +775,25 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
                     </button>
                   )}
                   
-                  {/* FEATURE_DISABLED_RETURNS_START
-                      Return request button and return-window message disabled.
-                  FEATURE_DISABLED_RETURNS_END */}
+                  {isReturnWindowOpen(order) && (
+                    <button
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setReturnReason('');
+                        setShowReturnModal(true);
+                      }}
+                      className="w-full bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm flex items-center justify-center gap-2"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Request Return
+                    </button>
+                  )}
+
+                  {order.status === 'delivered' && (
+                    <p className="text-xs text-gray-500 text-center">
+                      {getReturnWindowMessage(order)}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -741,9 +801,55 @@ const CustomerOrdersTab: React.FC<{ onOrderUpdate?: () => void }> = ({ onOrderUp
         </div>
       )}
 
-      {/* FEATURE_DISABLED_RETURNS_START
-          Return request modal disabled.
-      FEATURE_DISABLED_RETURNS_END */}
+      {showReturnModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Request Return</h3>
+            <div className="space-y-4">
+              <div className="bg-orange-50 rounded-lg p-4">
+                <p className="text-sm text-orange-900">
+                  Order #{selectedOrder.orderNumber || selectedOrder._id?.slice(-8)}
+                </p>
+                <p className="text-xs text-orange-700 mt-1">
+                  Returns are accepted within 30 days of delivery.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reason for return *
+                </label>
+                <textarea
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  rows={4}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="Tell the seller why you want to return this order"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleRequestReturn}
+                  className="flex-1 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+                >
+                  Submit Return Request
+                </button>
+                <button
+                  onClick={() => {
+                    setShowReturnModal(false);
+                    setSelectedOrder(null);
+                    setReturnReason('');
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Review Modal */}
       {showReviewModal && selectedOrder && selectedProduct && (
